@@ -1313,27 +1313,14 @@ public:
         }
       }
     }
-    bool relative_pose = false;
-    auto it = parameter_overrides.find("relative");
-    if (it != parameter_overrides.end()) {
-      relative_pose = it->second.get<bool>();
-    }
     this->declare_parameter("poses_qos_deadline", 100.0f);
     double poses_qos_deadline = this->get_parameter("poses_qos_deadline").get_parameter_value().get<double>();
 
     rclcpp::SensorDataQoS sensor_data_qos;
     sensor_data_qos.keep_last(1);
     sensor_data_qos.deadline(rclcpp::Duration(0/*s*/, 1e9/poses_qos_deadline /*ns*/));
-    // relative_pose = false;
-    if (relative_pose == true){
-      RCLCPP_INFO(logger_, "SUBSCRIBING TO RELATIVE POSES");
-      sub_poses_ = this->create_subscription<NamedPoseArray>(
-        "poses_relative", sensor_data_qos, std::bind(&CrazyflieServer::posesChanged, this, _1), sub_opt_mocap);
-    } else{
-       
-      sub_poses_ = this->create_subscription<NamedPoseArray>(
-        "poses", sensor_data_qos, std::bind(&CrazyflieServer::posesChanged, this, _1), sub_opt_mocap);
-    }
+    sub_poses_ = this->create_subscription<NamedPoseArray>(
+      "poses", sensor_data_qos, std::bind(&CrazyflieServer::posesChanged, this, _1), sub_opt_mocap);
     // support for all.params
 
     // Create a parameter subscriber that can be used to monitor parameter changes
