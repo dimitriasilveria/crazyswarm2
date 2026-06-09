@@ -279,7 +279,6 @@ public:
         }
       }
     };
-
     if (enable_parameters) {
       bool query_all_values_on_connect = node->get_parameter("firmware_params.query_all_values_on_connect").get_parameter_value().get<bool>();
 
@@ -1509,7 +1508,6 @@ private:
 
     // Here, we send all the poses to all CFs
     // In Crazyswarm1, we only sent the poses of the same group (i.e. channel)
-
 
     // split the message into parts that require position update and pose update
     std::vector<CrazyflieBroadcaster::externalPosition> data_position;
