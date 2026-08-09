@@ -16,6 +16,7 @@
   <depend>sensor_msgs</depend>
   <depend>crazyflie_interfaces</depend>
   <depend>geometry_msgs</depend>
+  <depend>eigen</depend>
   <exec_depend>crazyflie_description</exec_depend>
   <exec_depend>crazyflie_server_cpp</exec_depend>
 

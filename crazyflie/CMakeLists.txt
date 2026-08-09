@@ -14,6 +14,7 @@ find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(crazyflie_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 add_executable(teleop 
   src/teleop.cpp
@@ -24,6 +25,7 @@ target_link_libraries(teleop
   ${std_srvs_TARGETS}
   ${crazyflie_interfaces_TARGETS}
   ${geometry_msgs_TARGETS}
+  Eigen3::Eigen
 )
 
 # Install C++ executables
