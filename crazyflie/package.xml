@@ -12,6 +12,7 @@
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>rclpy</depend>
   <depend>std_srvs</depend>
   <depend>sensor_msgs</depend>
   <depend>crazyflie_interfaces</depend>
