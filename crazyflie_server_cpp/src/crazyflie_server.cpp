@@ -1,11 +1,14 @@
-#include <memory>
+git push origin main#include <memory>
 #include <vector>
 #include <regex>
 
 #include <crazyflie_cpp/Crazyflie.h>
 
 #include <rclcpp/rclcpp.hpp>
-#include <tf2_ros/transform_broadcaster.h>
+#include "rclcpp/node_interfaces/node_interfaces.hpp"
+#include "rclcpp/node_interfaces/get_node_parameters_interface.hpp"
+#include "rclcpp/node_interfaces/get_node_topics_interface.hpp"
+#include "tf2_ros/transform_broadcaster.h"
 #include "std_srvs/srv/empty.hpp"
 #include "crazyflie_interfaces/srv/start_trajectory.hpp"
 #include "crazyflie_interfaces/srv/takeoff.hpp"
@@ -18,6 +21,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "crazyflie_interfaces/srv/upload_trajectory.hpp"
 #include "motion_capture_tracking_interfaces/msg/named_pose_array.hpp"
@@ -136,6 +140,15 @@ private:
   } __attribute__((packed));
 
 
+  struct logImu {
+    float ax; // acc.x, g
+    float ay; // acc.y, g
+    float az; // acc.z, g
+    float gx; // gyro.x, deg/s
+    float gy; // gyro.y, deg/s
+    float gz; // gyro.z, deg/s
+  } __attribute__((packed));
+
   struct logStatus {
     // general status
     uint16_t supervisorInfo; // supervisor.info
@@ -169,7 +182,12 @@ public:
       std::bind(&CrazyflieROS::on_console, this, std::placeholders::_1))
     , name_(name)
     , node_(node)
-    , tf_broadcaster_(node)
+    , tf_broadcaster_(
+        rclcpp::node_interfaces::NodeInterfaces<
+          rclcpp::node_interfaces::NodeParametersInterface,
+          rclcpp::node_interfaces::NodeTopicsInterface>(
+            node->get_node_parameters_interface(),
+            node->get_node_topics_interface()))
     , last_on_latency_(std::chrono::steady_clock::now())
     , cfbc_(cfbc)
     , previous_numRxBc(0)
@@ -524,6 +542,25 @@ public:
             log_block_status_.reset(new LogBlock<logStatus>(
               &cf_,logvars, cb));
             log_block_status_->start(uint8_t(100.0f / (float)freq)); // this is in tens of milliseconds
+          }
+          else if (i.first.find("default_topics.imu") == 0) {
+            int freq = log_config_map["default_topics.imu.frequency"].get<int>();
+            RCLCPP_INFO(logger_, "[%s] Logging to /imu at %d Hz", name_.c_str(), freq);
+
+            publisher_imu_ = node->create_publisher<sensor_msgs::msg::Imu>(name + "/imu", 10);
+
+            std::function<void(uint32_t, const logImu*)> cb = std::bind(&CrazyflieROS::on_logging_imu, this, std::placeholders::_1, std::placeholders::_2);
+
+            log_block_imu_.reset(new LogBlock<logImu>(
+              &cf_,{
+                {"acc", "x"},
+                {"acc", "y"},
+                {"acc", "z"},
+                {"gyro", "x"},
+                {"gyro", "y"},
+                {"gyro", "z"},
+              }, cb));
+            log_block_imu_->start(uint8_t(100.0f / (float)freq)); // this is in tens of milliseconds
           }
           else if (i.first.find("custom_topics") == 0
                    && i.first.rfind(".vars") != std::string::npos) {
@@ -935,6 +972,29 @@ private:
     }
   }
 
+  void on_logging_imu(uint32_t time_in_ms, const logImu* data) {
+    if (publisher_imu_) {
+      sensor_msgs::msg::Imu msg;
+      msg.header.stamp = node_->get_clock()->now();
+      msg.header.frame_id = name_;
+
+      // firmware: acc in g, gyro in deg/s -> SI (m/s^2, rad/s)
+      constexpr double gravity = 9.80665;
+      constexpr double deg2rad = M_PI / 180.0;
+      msg.linear_acceleration.x = data->ax * gravity;
+      msg.linear_acceleration.y = data->ay * gravity;
+      msg.linear_acceleration.z = data->az * gravity;
+      msg.angular_velocity.x = data->gx * deg2rad;
+      msg.angular_velocity.y = data->gy * deg2rad;
+      msg.angular_velocity.z = data->gz * deg2rad;
+
+      // No orientation: this topic is raw IMU; see /pose for attitude estimate (26-byte log block)
+      msg.orientation_covariance[0] = -1.0;
+
+      publisher_imu_->publish(msg);
+    }
+  }
+
   void on_logging_scan(uint32_t time_in_ms, const logScan* data) {
     if (publisher_scan_) {
       
@@ -1172,6 +1232,9 @@ private:
   std::unique_ptr<LogBlock<logStatus>> log_block_status_;
   bool status_has_radio_stats_;
   rclcpp::Publisher<crazyflie_interfaces::msg::Status>::SharedPtr publisher_status_;
+
+  std::unique_ptr<LogBlock<logImu>> log_block_imu_;
+  rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_imu_;
   uint16_t previous_numRxBc;
   uint16_t previous_numRxUc;
   bitcraze::crazyflieLinkCpp::Connection::Statistics previous_stats_unicast_;
@@ -1320,6 +1383,7 @@ public:
     sensor_data_qos.deadline(rclcpp::Duration(0/*s*/, 1e9/poses_qos_deadline /*ns*/));
     sub_poses_ = this->create_subscription<NamedPoseArray>(
       "poses", sensor_data_qos, std::bind(&CrazyflieServer::posesChanged, this, _1), sub_opt_mocap);
+
     // support for all.params
 
     // Create a parameter subscriber that can be used to monitor parameter changes
@@ -1336,7 +1400,7 @@ public:
     service_go_to_ = this->create_service<GoTo>("all/go_to", std::bind(&CrazyflieServer::go_to, this, _1, _2), get_service_qos(), callback_group_all_srv_);
     service_notify_setpoints_stop_ = this->create_service<NotifySetpointsStop>("all/notify_setpoints_stop", std::bind(&CrazyflieServer::notify_setpoints_stop, this, _1, _2), get_service_qos(), callback_group_all_srv_);
     service_arm_ = this->create_service<Arm>("all/arm", std::bind(&CrazyflieServer::arm, this, _1, _2), get_service_qos(), callback_group_all_srv_);
-    service_reboot_ = this->create_service<Empty>("all/reboot", std::bind(&CrazyflieServer::reboot, this, _1, _2), get_service_qos(), callback_group_all_srv_);
+    
     // This is the last service to announce and can be used to check if the server is fully available
     service_emergency_ = this->create_service<Empty>("all/emergency", std::bind(&CrazyflieServer::emergency, this, _1, _2), get_service_qos(), callback_group_all_srv_);
   }

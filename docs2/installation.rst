@@ -34,7 +34,7 @@ First Installation
 
             .. code-block:: bash
 
-                pip3 install rowan nicegui==1.4.2
+                pip3 install rowan
 
         .. tab-item:: Source Installation
             :sync: src
@@ -42,7 +42,7 @@ First Installation
             .. code-block:: bash
 
                 sudo apt install libboost-program-options-dev libusb-1.0-0-dev
-                pip3 install rowan nicegui==1.4.2
+                pip3 install rowan
 
    Then install the motion capture ROS 2 package (replace <DISTRO> with your version of ROS, namely humble or jazzy):
 
@@ -96,7 +96,16 @@ First Installation
          
             .. note::
                 If you install it for the first time, you will see a lot of warnings at first. 
-                As long as the build of the package finish, you can ignore this for now. 
+                As long as the build of the package finish, you can ignore this for now.
+
+            .. warning::
+               If you get build errors from missing pip, your machine are probably missing some additional packages that were missed in the initial ROS installation (see this `issue <https://github.com/IMRCLab/crazyswarm2/issues/863/>`_.)
+               Please pip install then the following and try again:
+               
+               .. code-block:: bash
+
+                  pip3 install catkin_pkg lark-parser empy==3.3.4 colcon-common-extensions
+               
        
 
 4. Set up Crazyradio
