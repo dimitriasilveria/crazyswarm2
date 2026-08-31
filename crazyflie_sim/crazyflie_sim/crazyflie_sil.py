@@ -217,17 +217,61 @@ class CrazyflieSIL:
         self.cmdHl_vel = copy_svec(self.setpoint.velocity)
         self.cmdHl_yaw = yaw
 
-    # def cmdPosition(self, pos, yaw = 0):
-    #     self.mode = CrazyflieSIL.MODE_LOW_POSITION
-    #     self.setState.pos = firm.mkvec(*pos)
-    #     self.setState.yaw = yaw
-    #     # TODO: should we set vel, acc, omega to zero, or rely on modes to not read them?
+    def cmdPosition(self, pos, yaw=0):
+        """Set an absolute position and yaw command."""
+        self.mode = CrazyflieSIL.MODE_LOW_POSITION
+        self.setpoint.position.x = pos[0]
+        self.setpoint.position.y = pos[1]
+        self.setpoint.position.z = pos[2]
+        self.setpoint.velocity.x = 0.0
+        self.setpoint.velocity.y = 0.0
+        self.setpoint.velocity.z = 0.0
+        self.setpoint.acceleration.x = 0.0
+        self.setpoint.acceleration.y = 0.0
+        self.setpoint.acceleration.z = 0.0
+        self.setpoint.attitude.yaw = np.degrees(yaw)
+        self.setpoint.attitudeRate.roll = 0.0
+        self.setpoint.attitudeRate.pitch = 0.0
+        self.setpoint.attitudeRate.yaw = 0.0
+        self.setpoint.mode.x = firm.modeAbs
+        self.setpoint.mode.y = firm.modeAbs
+        self.setpoint.mode.z = firm.modeAbs
+        self.setpoint.mode.roll = firm.modeDisable
+        self.setpoint.mode.pitch = firm.modeDisable
+        self.setpoint.mode.yaw = firm.modeAbs
+        self.setpoint.mode.quat = firm.modeDisable
 
-    # def cmdVelocityWorld(self, vel, yawRate):
-    #     self.mode = CrazyflieSIL.MODE_LOW_VELOCITY
-    #     self.setState.vel = firm.mkvec(*vel)
-    #     self.setState.omega = firm.mkvec(0.0, 0.0, yawRate)
-    #     # TODO: should we set pos, acc, yaw to zero, or rely on modes to not read them?
+        self.cmdHl_pos = copy_svec(self.setpoint.position)
+        self.cmdHl_vel = firm.vzero()
+        self.cmdHl_yaw = yaw
+
+    def cmdVelocityWorld(self, vel, yawRate):
+        """Set a world-frame velocity and yaw-rate command."""
+        self.mode = CrazyflieSIL.MODE_LOW_VELOCITY
+        self.setpoint.position.x = self.state.position.x
+        self.setpoint.position.y = self.state.position.y
+        self.setpoint.position.z = self.state.position.z
+        self.setpoint.velocity.x = vel[0]
+        self.setpoint.velocity.y = vel[1]
+        self.setpoint.velocity.z = vel[2]
+        self.setpoint.acceleration.x = 0.0
+        self.setpoint.acceleration.y = 0.0
+        self.setpoint.acceleration.z = 0.0
+        self.setpoint.attitude.yaw = self.state.attitude.yaw
+        self.setpoint.attitudeRate.roll = 0.0
+        self.setpoint.attitudeRate.pitch = 0.0
+        self.setpoint.attitudeRate.yaw = yawRate
+        self.setpoint.mode.x = firm.modeVelocity
+        self.setpoint.mode.y = firm.modeVelocity
+        self.setpoint.mode.z = firm.modeVelocity
+        self.setpoint.mode.roll = firm.modeDisable
+        self.setpoint.mode.pitch = firm.modeDisable
+        self.setpoint.mode.yaw = firm.modeVelocity
+        self.setpoint.mode.quat = firm.modeDisable
+
+        self.cmdHl_pos = copy_svec(self.state.position)
+        self.cmdHl_vel = copy_svec(self.setpoint.velocity)
+        self.cmdHl_yaw = np.radians(self.state.attitude.yaw)
 
     # def cmdStop(self):
     #     # TODO: set mode to MODE_IDLE?

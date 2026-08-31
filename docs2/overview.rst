@@ -81,11 +81,11 @@ Support functionality with backends
 +---------------------+---------+-----------+---------+
 | - cmd_full_state    | Yes     | Yes       | Yes     |
 +---------------------+---------+-----------+---------+
-| - cmd_position      | Yes     | Yes       | No      |
+| - cmd_position      | Yes     | Yes       | Yes     |
 +---------------------+---------+-----------+---------+
 | - cmd_hover         | Yes     | Yes       | No      |
 +---------------------+---------+-----------+---------+
-| - cmd_velocity_world| Yes     | Yes       | No      |
+| - cmd_velocity_world| Yes     | Yes       | Yes     |
 +---------------------+---------+-----------+---------+
 | High-level control                                  |
 +---------------------+---------+-----------+---------+

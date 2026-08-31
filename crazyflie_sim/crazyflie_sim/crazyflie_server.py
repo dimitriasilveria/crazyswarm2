@@ -10,7 +10,7 @@ A crazyflie server for simulation.
 from functools import partial
 import importlib
 
-from crazyflie_interfaces.msg import FullState, Hover
+from crazyflie_interfaces.msg import FullState, Hover, Position, VelocityWorld
 from crazyflie_interfaces.srv import GoTo, Land, Takeoff
 from crazyflie_interfaces.srv import NotifySetpointsStop, StartTrajectory, UploadTrajectory
 from geometry_msgs.msg import Twist
@@ -191,6 +191,18 @@ class CrazyflieServer(Node):
                 FullState,
                 name + '/cmd_full_state',
                 partial(self._cmd_full_state_changed, name=name),
+                10
+            )
+            self.create_subscription(
+                Position,
+                name + '/cmd_position',
+                partial(self._cmd_position_changed, name=name),
+                10
+            )
+            self.create_subscription(
+                VelocityWorld,
+                name + '/cmd_velocity_world',
+                partial(self._cmd_velocity_world_changed, name=name),
                 10
             )
 
@@ -392,6 +404,15 @@ class CrazyflieServer(Node):
             [msg.acc.x, msg.acc.y, msg.acc.z],
             rpy[2],
             [msg.twist.angular.x, msg.twist.angular.y, msg.twist.angular.z])
+
+    def _cmd_position_changed(self, msg, name):
+        """Apply an absolute position and yaw setpoint."""
+        self.cfs[name].cmdPosition([msg.x, msg.y, msg.z], msg.yaw)
+
+    def _cmd_velocity_world_changed(self, msg, name):
+        """Apply a world-frame velocity and yaw-rate setpoint."""
+        self.cfs[name].cmdVelocityWorld(
+            [msg.vel.x, msg.vel.y, msg.vel.z], msg.yaw_rate)
 
 
 def main(args=None):
